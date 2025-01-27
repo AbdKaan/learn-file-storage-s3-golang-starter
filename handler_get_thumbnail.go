@@ -1,5 +1,5 @@
 package main
-
+/*
 import (
 	"fmt"
 	"net/http"
@@ -30,3 +30,4 @@ func (cfg *apiConfig) handlerThumbnailGet(w http.ResponseWriter, r *http.Request
 		return
 	}
 }
+*/
