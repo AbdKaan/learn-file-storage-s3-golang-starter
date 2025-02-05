@@ -1,10 +1,13 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
 	"os"
 
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/bootdotdev/learn-file-storage-s3-golang-starter/internal/database"
 
 	"github.com/joho/godotenv"
@@ -17,17 +20,19 @@ type apiConfig struct {
 	platform         string
 	filepathRoot     string
 	assetsRoot       string
+	s3Client         *s3.Client
 	s3Bucket         string
 	s3Region         string
 	s3CfDistribution string
 	port             string
 }
 
+/*
 type thumbnail struct {
 	data      []byte
 	mediaType string
 }
-
+*/
 //var videoThumbnails = map[uuid.UUID]thumbnail{}
 
 func main() {
@@ -83,12 +88,22 @@ func main() {
 		log.Fatal("PORT environment variable is not set")
 	}
 
+	awsCfg, err := config.LoadDefaultConfig(context.Background(),
+		config.WithRegion("eu-west-2"),
+	)
+	if err != nil {
+		log.Fatal("failed loading config for s3Client")
+	}
+
+	s3Client := s3.NewFromConfig(awsCfg)
+
 	cfg := apiConfig{
 		db:               db,
 		jwtSecret:        jwtSecret,
 		platform:         platform,
 		filepathRoot:     filepathRoot,
 		assetsRoot:       assetsRoot,
+		s3Client:         s3Client,
 		s3Bucket:         s3Bucket,
 		s3Region:         s3Region,
 		s3CfDistribution: s3CfDistribution,
@@ -105,7 +120,7 @@ func main() {
 	mux.Handle("/app/", appHandler)
 
 	assetsHandler := http.StripPrefix("/assets", http.FileServer(http.Dir(assetsRoot)))
-	mux.Handle("/assets/", cacheMiddleware(assetsHandler))
+	mux.Handle("/assets/", noCacheMiddleware(assetsHandler))
 
 	mux.HandleFunc("POST /api/login", cfg.handlerLogin)
 	mux.HandleFunc("POST /api/refresh", cfg.handlerRefresh)
